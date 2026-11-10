@@ -1,0 +1,18 @@
+/* Key points: ==text== renders as <mark>, whole blocks get class "key". Highlighted always. */
+.md-typeset mark { background-color: rgba(255, 210, 0, .42); color: inherit; padding: 0 .12em; border-radius: .2em; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+[data-md-color-scheme="slate"] .md-typeset mark { background-color: rgba(255, 200, 40, .24); }
+.md-typeset figure.key { padding: .4rem .6rem; border-left: 4px solid #e0ac00; border-radius: 0 6px 6px 0; background: rgba(255, 210, 0, .12); }
+.md-typeset div.key { margin: 1em 0; padding: .05rem .9rem; border-left: 4px solid #e0ac00; border-radius: 0 6px 6px 0; background: rgba(255, 210, 0, .12); }
+.md-typeset .admonition.key, .md-typeset details.key { box-shadow: 0 0 0 2px rgba(224, 172, 0, .8); }
+
+/* "Key points only" mode (header button): everything without a key point fades, hover/tap brings it back */
+html.kp-on .md-typeset .kp-dim { opacity: .14; transition: opacity .2s; }
+html.kp-on .md-typeset .kp-dim:hover { opacity: 1; }
+html.kp-on .md-typeset .kp-part { color: var(--md-default-fg-color--lighter); transition: color .2s; }
+html.kp-on .md-typeset .kp-part mark { color: var(--md-typeset-color); }
+
+.kp-btn { display: grid; place-items: center; flex: none; width: 2.3rem; height: 2.3rem; margin-left: .3rem; padding: 0; border: 0; border-radius: 50%; background: transparent; color: #fff; opacity: .6; cursor: pointer; transition: opacity .15s, background .15s; }
+.kp-btn[hidden] { display: none; }
+.kp-btn:hover { opacity: 1; background: rgba(255, 255, 255, .15); }
+.kp-btn.active { opacity: 1; background: rgba(255, 210, 0, .35); }
+.kp-btn svg { width: 1.2rem; height: 1.2rem; display: block; }

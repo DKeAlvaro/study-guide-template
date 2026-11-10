@@ -1,0 +1,462 @@
+/* Ask-the-guide.
+   Desktop: a drawer docked to the right edge, full height, the page stays usable behind it.
+   Phone:   a bottom sheet with a dimmed backdrop (tap it, press X or Esc to leave).
+   Exactly one scroll area (.ask-body); header and composer never move. */
+
+:root {
+  --ask-rust: var(--rust, #9b2114);
+  --ask-grad: #a82616;
+  --ask-line: rgba(0, 0, 0, .1);
+  --ask-soft: rgba(0, 0, 0, .05);
+  --ask-muted: var(--md-default-fg-color--light, #6b6259);
+}
+[data-md-color-scheme="slate"] {
+  --ask-line: rgba(255, 255, 255, .13);
+  --ask-soft: rgba(255, 255, 255, .07);
+}
+
+/* ---------- launcher ---------- */
+#ask-toggle {
+  position: fixed;
+  right: 1rem;
+  bottom: 1rem;
+  z-index: 11;
+  display: flex;
+  align-items: center;
+  gap: .55em;
+  padding: .65em 1.1em;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ask-grad);
+  color: #fff;
+  font: 600 .76rem "JetBrains Mono", monospace;
+  cursor: pointer;
+  transition: transform .15s ease;
+}
+#ask-toggle:hover { transform: translateY(-2px); }
+#ask-toggle svg { width: 1.1em; height: 1.1em; display: block; }
+#ask-toggle .dot { width: .5em; height: .5em; border-radius: 50%; background: rgba(255, 255, 255, .5); }
+#ask-toggle.has-key .dot { background: #8fe08b; }
+#ask-toggle.hidden { display: none; }
+
+/* ---------- shell ---------- */
+#ask-backdrop { display: none; }
+
+#ask-panel {
+  position: fixed;
+  z-index: 30;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: min(26rem, 100vw);
+  height: 100vh;
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  background: var(--md-default-bg-color, #fbf8f2);
+  color: var(--md-default-fg-color, #1d1b19);
+  border-left: 1px solid var(--ask-line);
+  transform: translateX(105%);
+  visibility: hidden;
+  transition: transform .22s ease, visibility 0s linear .22s;
+  overscroll-behavior: contain;
+}
+#ask-panel.open {
+  transform: none;
+  visibility: visible;
+  transition: transform .22s ease;
+}
+#ask-panel .ask-grab { display: none; }
+
+/* ---------- header ---------- */
+#ask-panel .ask-head {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: .35rem;
+  padding: .7rem .75rem;
+  background: var(--ask-grad);
+  color: #fff;
+}
+#ask-panel .ask-head-text { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: .1rem; padding-left: .25rem; }
+#ask-panel .ask-title { font: 700 1rem/1.15 "Fraunces", Georgia, serif; }
+#ask-panel .ask-sub {
+  font: 500 .64rem "JetBrains Mono", monospace;
+  opacity: .85;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+#ask-panel .ask-btn {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.5rem;
+  height: 2.5rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: #fff;
+  cursor: pointer;
+  transition: background .15s ease;
+}
+#ask-panel .ask-btn:hover { background: rgba(255, 255, 255, .22); }
+#ask-panel .ask-btn svg { width: 1.2rem; height: 1.2rem; display: block; pointer-events: none; }
+#ask-panel .ask-close { background: rgba(255, 255, 255, .2); }
+#ask-panel .ask-back { display: none; }
+#ask-panel[data-view="settings"] .ask-back { display: grid; }
+#ask-panel[data-view="settings"] .ask-gear,
+#ask-panel[data-view="settings"] .ask-reset { display: none; }
+#ask-panel[data-view="settings"] .ask-head-text { padding-left: 0; }
+
+/* ---------- the one scroll area ---------- */
+#ask-panel .ask-body {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 1rem .9rem;
+}
+#ask-panel[data-view="chat"] .ask-settings { display: none; }
+
+/* ---------- settings view ---------- */
+#ask-panel .ask-note { margin: 0 0 .4rem; font-size: .76rem; line-height: 1.5; color: var(--ask-muted); }
+#ask-panel .ask-settings label {
+  display: block;
+  margin-top: .8rem;
+  font: 600 .62rem "JetBrains Mono", monospace;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  color: var(--ask-muted);
+}
+#ask-panel .ask-settings input,
+#ask-panel .ask-settings select {
+  display: block;
+  width: 100%;
+  box-sizing: border-box;
+  margin-top: .3rem;
+  padding: .6rem .7rem;
+  border: 1px solid var(--ask-line);
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: 400 16px "JetBrains Mono", monospace; /* 16px stops iOS zooming on focus */
+}
+#ask-panel .ask-settings select option { color: #1d1b19; }
+#ask-panel .ask-settings input:focus,
+#ask-panel .ask-settings select:focus { outline: none; border-color: var(--ask-rust); box-shadow: 0 0 0 3px rgba(155, 33, 20, .15); }
+#ask-panel .ask-actions { display: flex; align-items: center; gap: .8rem; margin-top: 1.1rem; }
+#ask-panel .ask-save {
+  padding: .6rem 1.4rem;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ask-grad);
+  color: #fff;
+  font: 600 .78rem "JetBrains Mono", monospace;
+  cursor: pointer;
+}
+#ask-panel .ask-keylink { font: 600 .74rem "JetBrains Mono", monospace; color: var(--ask-rust); }
+
+/* ---------- composer ---------- */
+#ask-panel .ask-quote {
+  display: flex;
+  align-items: flex-start;
+  gap: .4rem;
+  margin-bottom: .55rem;
+  padding: .4rem .4rem .4rem .7rem;
+  border-left: 3px solid var(--ask-rust);
+  border-radius: 8px;
+  background: var(--ask-soft);
+}
+#ask-panel .ask-quote[hidden] { display: none; }
+#ask-panel .ask-quote-text {
+  flex: 1;
+  min-width: 0;
+  max-height: 4.6em;
+  overflow-y: auto;
+  font-size: .76rem;
+  line-height: 1.5;
+  font-style: italic;
+  overflow-wrap: anywhere;
+}
+#ask-panel .ask-quote-x {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--ask-muted);
+  cursor: pointer;
+}
+#ask-panel .ask-quote-x:hover { background: var(--ask-soft); }
+#ask-panel .ask-quote-x svg { width: 1rem; height: 1rem; display: block; pointer-events: none; }
+/* ---------- "Ask about this" chip ---------- */
+#ask-select-btn {
+  position: fixed;
+  z-index: 40;
+  display: none;
+  align-items: center;
+  gap: .45em;
+  padding: .55em 1em;
+  border: 0;
+  border-radius: 999px;
+  background: var(--ask-grad);
+  color: #fff;
+  font: 600 .76rem "JetBrains Mono", monospace;
+  white-space: nowrap;
+  cursor: pointer;
+}
+#ask-select-btn svg { width: 1em; height: 1em; display: block; }
+
+/* ---------- dark scheme ---------- */
+
+[data-md-color-scheme="slate"] #ask-panel .ask-keylink { color: var(--md-accent-fg-color, #e3826f); }
+
+/* ---------- phones: bottom sheet ---------- */
+@media screen and (max-width: 44.9375em) {
+  #ask-toggle { right: .75rem; bottom: .75rem; }
+
+  #ask-backdrop {
+    display: block;
+    position: fixed;
+    inset: 0;
+    z-index: 29;
+    background: rgba(0, 0, 0, .45);
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .2s ease;
+  }
+  #ask-backdrop.open { opacity: 1; pointer-events: auto; }
+
+  #ask-panel {
+    top: auto;
+    left: 0;
+    right: 0;
+    width: auto;
+    height: 86vh;
+    height: 86dvh;
+    border-left: 0;
+    border-radius: 18px 18px 0 0;
+    overflow: hidden;
+    transform: translateY(105%);
+  }
+  #ask-panel.open { transform: none; }
+  #ask-panel .ask-head { padding-top: .4rem; }
+  #ask-panel .ask-grab {
+    display: block;
+    flex: none;
+    height: 1.1rem;
+    background: #9b2114;
+    position: relative;
+  }
+  #ask-panel .ask-grab::after {
+    content: "";
+    position: absolute;
+    left: 50%;
+    top: .45rem;
+    width: 2.4rem;
+    height: .25rem;
+    margin-left: -1.2rem;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, .5);
+  }
+
+  /* stop the page behind the sheet from scrolling */
+  html.ask-open, html.ask-open body { overflow: hidden; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  #ask-panel, #ask-backdrop { transition: none !important; }
+}
+@media print { #ask-toggle, #ask-panel, #ask-backdrop, #ask-select-btn { display: none !important; } }
+
+/* ---------- chat host, context line, highlighted passage ---------- */
+#ask-panel .ask-body { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+#ask-panel .ask-chat-host { flex: 1 1 auto; min-height: 0; position: relative; }
+#ask-panel .ask-chat { position: absolute; inset: 0; display: flex; }
+#ask-panel[data-view="settings"] .ask-chat-host,
+#ask-panel[data-view="settings"] .ask-ctx,
+#ask-panel[data-view="settings"] .ask-quote { display: none; }
+#ask-panel[data-view="settings"] .ask-body { overflow-y: auto; padding: 1rem .9rem; display: block; }
+#ask-panel .ask-fail { padding: 1.2rem; color: var(--ask-muted); font-size: .85rem; }
+#ask-panel .ask-ctx { flex: none; display: flex; align-items: center; gap: .5em; padding: .4rem .9rem; border-bottom: 1px solid var(--ask-line); font: 500 .68rem "JetBrains Mono", monospace; color: var(--ask-muted); }
+#ask-panel .ask-ctx-dot { flex: none; width: .5em; height: .5em; border-radius: 50%; background: #3fa34d; }
+#ask-panel .ask-ctx-text { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#ask-panel .ask-quote { flex: none; margin: 0; padding: .5rem .5rem .5rem .8rem; border-radius: 0; border-bottom: 1px solid var(--ask-line); background: var(--ask-soft); }
+#ask-panel .ask-quote-text { max-height: 6.5em; font-size: .78rem; }
+[data-md-color-scheme="slate"] #ask-panel .ask-ctx { color: #b9b1a7; }
+[data-md-color-scheme="slate"] #ask-panel .ask-quote-text { color: #e4ded6; }
+#ask-panel .ask-quote-main { flex: 1; min-width: 0; }
+#ask-panel .ask-quote-label { font: 600 .62rem "JetBrains Mono", monospace; text-transform: uppercase; letter-spacing: .06em; color: var(--ask-rust); margin-bottom: .15rem; }
+#ask-panel .ask-quote-text { display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; max-height: none; overflow: hidden; font-style: normal; font-size: .76rem; line-height: 1.45; }
+[data-md-color-scheme="slate"] #ask-panel .ask-quote-label { color: #e3826f; }
+
+/* ---------- slim header ---------- */
+#ask-panel .ask-head { padding: .35rem .5rem .35rem .85rem; }
+#ask-panel .ask-title { font-size: .95rem; }
+#ask-panel .ask-btn { width: 2.1rem; height: 2.1rem; }
+#ask-panel .ask-btn svg { width: 1.05rem; height: 1.05rem; }
+#ask-panel .ask-close { background: transparent; }
+
+/* ---------- floating window (desktop): drag by the header, resize from the corners ---------- */
+@media screen and (min-width: 45em) {
+  #ask-panel {
+    right: auto; bottom: auto; top: 0; left: 0;
+    width: 380px; height: 520px;
+    border: 1px solid var(--ask-line);
+    border-radius: 14px;
+    overflow: hidden;
+    transform: scale(.97);
+    opacity: 0;
+    transition: transform .15s ease, opacity .15s ease, visibility 0s linear .15s;
+  }
+  #ask-panel.open { transform: none; opacity: 1; transition: transform .15s ease, opacity .15s ease; }
+  #ask-panel.dragging { transition: none; user-select: none; }
+  #ask-panel .ask-head { cursor: grab; touch-action: none; padding: .2rem .35rem .2rem .8rem; }
+  #ask-panel.dragging .ask-head { cursor: grabbing; }
+  #ask-panel .ask-title { font-size: .85rem; }
+  #ask-panel .ask-btn { width: 1.9rem; height: 1.9rem; }
+  #ask-panel .ask-btn svg { width: .95rem; height: .95rem; }
+  #ask-panel .ask-resize { position: absolute; z-index: 3; width: 18px; height: 18px; touch-action: none; }
+  #ask-panel .ask-resize-nw { top: 0; left: 0; cursor: nwse-resize; }
+  #ask-panel .ask-resize-se { bottom: 0; right: 0; cursor: nwse-resize; }
+  #ask-panel .ask-resize-ne { top: 0; right: 0; cursor: nesw-resize; }
+  #ask-panel .ask-resize-sw { bottom: 0; left: 0; cursor: nesw-resize; }
+  #ask-panel .ask-resize-n, #ask-panel .ask-resize-s { left: 18px; right: 18px; width: auto; height: 6px; cursor: ns-resize; }
+  #ask-panel .ask-resize-e, #ask-panel .ask-resize-w { top: 18px; bottom: 18px; height: auto; width: 6px; cursor: ew-resize; }
+  #ask-panel .ask-resize-n { top: 0; } #ask-panel .ask-resize-s { bottom: 0; }
+  #ask-panel .ask-resize-e { right: 0; } #ask-panel .ask-resize-w { left: 0; }
+  #ask-panel .ask-resize-se::after { content: ""; position: absolute; right: 4px; bottom: 4px; width: 8px; height: 8px; border-right: 2px solid var(--ask-line); border-bottom: 2px solid var(--ask-line); }
+  #ask-panel .ask-quote { padding: .35rem .4rem .35rem .65rem; }
+  #ask-panel .ask-quote-text { -webkit-line-clamp: 2; }
+  #ask-panel .ask-settings { padding: .2rem; }
+}
+@media screen and (max-width: 44.9375em) { #ask-panel .ask-resize { display: none; } }
+
+/* quote: only the "Ask about this" label until hovered/focused */
+#ask-panel .ask-quote { padding-top: .35rem; padding-bottom: .35rem; }
+#ask-panel .ask-quote-label { margin-bottom: 0; }
+#ask-panel .ask-quote-main:not(:hover):not(:focus) .ask-quote-text { display: none; }
+#ask-panel .ask-quote-main:hover .ask-quote-text,
+#ask-panel .ask-quote-main:focus .ask-quote-text { margin-top: .25rem; }
+#ask-panel .ask-quote-main { outline: none; }
+#ask-panel .ask-quote-x { width: 1.6rem; height: 1.6rem; }
+
+/* quote lives in the header row; its text drops down over the chat on hover */
+#ask-panel .ask-head { position: relative; }
+#ask-panel .ask-head .ask-quote { position: static; display: flex; align-items: center; gap: .2rem; padding: 0; margin: 0; border: 0; background: none; color: #fff; }
+#ask-panel .ask-head .ask-quote[hidden] { display: none; }
+#ask-panel .ask-head .ask-quote-main { flex: 0 1 auto; padding: .25rem 0; cursor: default; }
+#ask-panel .ask-head .ask-quote-label { color: #fff; margin: 0; font-size: .7rem; }
+#ask-panel .ask-head .ask-quote-x { color: #fff; }
+#ask-panel .ask-head .ask-quote-x:hover { background: rgba(255, 255, 255, .18); }
+#ask-panel .ask-head .ask-quote-text {
+  position: absolute; left: 0; right: 0; top: 100%; z-index: 5; margin: 0; max-height: 11em;
+  padding: .55rem .85rem; background: var(--md-default-bg-color, #fff); color: var(--md-default-fg-color, #222);
+  border-bottom: 1px solid var(--ask-line);
+}
+#ask-panel .ask-head .ask-quote-text { display: block; -webkit-line-clamp: unset; -webkit-box-orient: unset; overflow-y: auto; max-height: 14em; font-size: .8rem; line-height: 1.55; }
+#ask-panel[data-view="settings"] .ask-head .ask-quote { display: none; }
+#ask-panel .ask-zoom svg { width: 1rem; height: 1rem; }
+
+/* ---------- compact header, icon-only quote label ---------- */
+#ask-panel .ask-head { padding: .05rem .3rem .05rem .7rem; min-height: 0; }
+#ask-panel .ask-head .ask-btn { width: 1.6rem; height: 1.6rem; }
+#ask-panel .ask-head .ask-btn svg { width: .85rem; height: .85rem; }
+#ask-panel .ask-head .ask-quote-label svg { width: .95rem; height: .95rem; display: block; }
+#ask-panel .ask-head .ask-quote-x { width: 1.4rem; height: 1.4rem; }
+#ask-panel .ask-head .ask-quote-main { padding: .15rem .2rem; }
+
+/* quote pill: the X sits inside it; the dropdown text under the header is tighter */
+#ask-panel .ask-head .ask-quote { background: rgba(255, 255, 255, .2); border-radius: 999px; padding: 0 .15rem 0 .5rem; gap: .1rem; }
+#ask-panel .ask-head .ask-quote-main { padding: .1rem 0; }
+#ask-panel .ask-head .ask-quote-x { width: 1.25rem; height: 1.25rem; }
+#ask-panel .ask-head .ask-quote-x svg { width: .7rem; height: .7rem; }
+#ask-panel .ask-head .ask-quote-text { padding: .3rem .6rem; font-size: .76rem; line-height: 1.4; max-height: 10em; }
+#ask-panel .ask-head .ask-quote { align-self: flex-start; width: fit-content; max-width: 100%; }
+#ask-panel .ask-head .ask-quote-main { flex: 0 0 auto; }
+
+/* ---------- desktop: only the content by default; the header and the input each appear when hovered ---------- */
+@media screen and (min-width: 45em) {
+  #ask-panel .ask-resize { z-index: 6; }
+  #ask-panel .ask-head { position: absolute; top: 0; left: 0; right: 0; z-index: 4; opacity: 0; transition: opacity .28s cubic-bezier(.4, 0, .2, 1) .25s !important; }
+  #ask-panel .ask-head:hover, #ask-panel.dragging .ask-head, #ask-panel[data-view="settings"] .ask-head { opacity: 1; transition-delay: 0s !important; }
+  #ask-panel .ask-reset { display: none; }
+  #ask-panel[data-view="settings"] .ask-body { padding-top: 2.4rem; }
+}
+
+/* grey handle at the top edge hints that the header is there; it fades out once the header opens */
+@media screen and (min-width: 45em) {
+  #ask-panel::before { content: ""; position: absolute; z-index: 5; top: 8px; left: 50%; width: 44px; height: 5px; margin-left: -22px; border-radius: 4px; background: rgba(128, 128, 128, .55); pointer-events: none; transition: opacity .28s cubic-bezier(.4, 0, .2, 1) !important; }
+  #ask-panel:has(.ask-head:hover)::before, #ask-panel.dragging::before, #ask-panel[data-view="settings"]::before { opacity: 0; }
+}
+
+/* ---------- anchored window: tail pointing at the highlighted text ---------- */
+#ask-tail {
+  position: fixed;
+  z-index: 31;
+  display: none;
+  width: 14px;
+  height: 14px;
+  margin: -7px 0 0 -7px;
+  transform: rotate(45deg);
+  pointer-events: none;
+  background: var(--md-default-bg-color, #fbf8f2);
+  border: 1px solid var(--ask-line);
+}
+#ask-tail.below { background: #9b2114; border-color: #9b2114; clip-path: polygon(0 0, 100% 0, 0 100%); }
+@keyframes ask-tail-in { from { opacity: 0; } to { opacity: 1; } }
+#ask-tail { animation: ask-tail-in .2s ease .34s both; }
+#ask-tail.above { clip-path: polygon(100% 0, 100% 100%, 0 100%); }
+@media screen and (max-width: 44.9375em) { #ask-tail { display: none !important; } }
+
+/* the passage stays marked while the window is about it; hovering the quote in the header brightens it */
+::highlight(ask-anchor) { background-color: rgba(155, 33, 20, .22); }
+html.ask-hot ::highlight(ask-anchor) { background-color: rgba(255, 190, 40, .6); }
+[data-md-color-scheme="slate"] ::highlight(ask-anchor) { background-color: rgba(227, 130, 111, .3); }
+
+/* ---------- the ball ---------- */
+#ask-ball {
+  position: fixed;
+  z-index: 30;
+  display: none;
+  width: 44px;
+  height: 44px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: #a82616;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-drag: none;
+}
+#ask-ball:active { cursor: grabbing; }
+#ask-ball svg { width: 100%; height: 100%; display: block; pointer-events: none; }
+
+/* ---------- window <-> ball morph ---------- */
+@keyframes ask-in { from { opacity: 0; } }
+@keyframes ask-face-in { from { opacity: 0; transform: scale(.6); } }
+@media screen and (min-width: 45em) {
+  #ask-panel.morph {
+    transition: left .36s cubic-bezier(.65, 0, .35, 1), top .36s cubic-bezier(.65, 0, .35, 1), width .36s cubic-bezier(.65, 0, .35, 1),
+      height .36s cubic-bezier(.65, 0, .35, 1), border-radius .36s cubic-bezier(.65, 0, .35, 1), background-color .36s ease, border-color .36s ease !important;
+    will-change: left, top, width, height;
+  }
+  /* keep the content at full width while the box resizes, so the text never reflows mid-animation */
+  #ask-panel.morph > .ask-head, #ask-panel.morph > .ask-body { width: var(--pw); flex: none; }
+  #ask-panel.morph.to-ball > * { transition: opacity .12s ease !important; }
+  #ask-panel.to-ball { background: #a82616; border-color: #a82616; border-radius: 22px; }
+  #ask-panel.to-ball > * { opacity: 0 !important; }
+  #ask-panel.grow > * { animation: ask-in .2s ease .3s backwards; }
+  #ask-panel.noanim, #ask-panel.noanim > * { transition: none !important; }
+}
+#ask-ball svg { animation: ask-face-in .2s ease backwards; }
+
+@media print { #ask-ball, #ask-tail { display: none !important; } }
